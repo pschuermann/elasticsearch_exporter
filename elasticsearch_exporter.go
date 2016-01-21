@@ -388,7 +388,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, "user").Set(float64(stats.Process.CPU.User / 1000))
 	}
 
-	log.Println("cluster uri:", e.ClusterURI)
 	cresp, err := e.client.Get(e.ClusterURI)
 	if err != nil {
 		log.Println("Error while query elasticsearch cluster status", err)
@@ -400,7 +399,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		log.Println("Failed to read ES cluster response body:", err)
 		return
 	}
-	log.Println("cluter response body:", string(cBody))
 	var clusterStat ClusterHealthResponse
 	err = json.Unmarshal(cBody, &clusterStat)
 	if err != nil {
