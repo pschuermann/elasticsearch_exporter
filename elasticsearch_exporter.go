@@ -26,6 +26,7 @@ type VecInfo struct {
 
 var (
 	gaugeMetrics = map[string]string{
+		"cluster_health_status":                   "Current cluster health status",
 		"indices_fielddata_memory_size_bytes":     "Field data cache memory usage in bytes",
 		"indices_filter_cache_memory_size_bytes":  "Filter cache memory usage in bytes",
 		"indices_query_cache_memory_size_bytes":   "Query cache memory usage in bytes",
@@ -129,8 +130,9 @@ var (
 // Exporter collects Elasticsearch stats from the given server and exports
 // them using the prometheus metrics package.
 type Exporter struct {
-	URI   string
-	mutex sync.RWMutex
+	URI        string
+	ClusterURI string
+	mutex      sync.RWMutex
 
 	up prometheus.Gauge
 
@@ -183,10 +185,18 @@ func NewExporter(uri string, timeout time.Duration, allNodes bool) *Exporter {
 		}, []string{"cluster", "node"})
 	}
 
+	var nodeURI string
+	var clusterURI string
+	if allNodes {
+		nodeURI = uri + "/_nodes/stats"
+	} else {
+		nodeURI = uri + "/_nodes/_local/stats"
+	}
+	clusterURI = uri + "/_cluster/health"
 	// Init our exporter.
 	return &Exporter{
-		URI: uri,
-
+		URI:        nodeURI,
+		ClusterURI: clusterURI,
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "up",
@@ -378,6 +388,36 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, "user").Set(float64(stats.Process.CPU.User / 1000))
 	}
 
+	log.Println("cluster uri:", e.ClusterURI)
+	cresp, err := e.client.Get(e.ClusterURI)
+	if err != nil {
+		log.Println("Error while query elasticsearch cluster status", err)
+		return
+	}
+	defer cresp.Body.Close()
+	cBody, err := ioutil.ReadAll(cresp.Body)
+	if err != nil {
+		log.Println("Failed to read ES cluster response body:", err)
+		return
+	}
+	log.Println("cluter response body:", string(cBody))
+	var clusterStat ClusterHealthResponse
+	err = json.Unmarshal(cBody, &clusterStat)
+	if err != nil {
+		log.Println("Failed to unmarshal JSON into struct:", err)
+		return
+	}
+	switch clusterStat.Status {
+	case "green":
+		e.gauges["cluster_health_status"].WithLabelValues(clusterStat.ClusterName, "unknown").Set(float64(0))
+	case "yellow":
+		e.gauges["cluster_health_status"].WithLabelValues(clusterStat.ClusterName, "unknown").Set(float64(1))
+	case "red":
+		e.gauges["cluster_health_status"].WithLabelValues(clusterStat.ClusterName, "unknown").Set(float64(2))
+	default:
+		e.gauges["cluster_health_status"].WithLabelValues(clusterStat.ClusterName, "unknown").Set(float64(0))
+	}
+
 	// Report metrics.
 
 	for _, vec := range e.counterVecs {
@@ -407,11 +447,11 @@ func main() {
 	)
 	flag.Parse()
 
-	if *esAllNodes {
-		*esURI = *esURI + "/_nodes/stats"
-	} else {
-		*esURI = *esURI + "/_nodes/_local/stats"
-	}
+	// if *esAllNodes {
+	// 	*esURI = *esURI + "/_nodes/stats"
+	// } else {
+	// 	*esURI = *esURI + "/_nodes/_local/stats"
+	// }
 
 	exporter := NewExporter(*esURI, *esTimeout, *esAllNodes)
 	prometheus.MustRegister(exporter)
