@@ -87,11 +87,7 @@ $(SELFLINK):
 	mkdir -p $(dir $@)
 	ln -s $(CURDIR) $@
 
-dependencies-stamp: $(GOCC) $(SRC) | $(SELFLINK)
-	$(GO) get -d
-	touch $@
-
-$(BINARY): $(GOCC) $(SRC) dependencies-stamp Makefile Makefile.COMMON
+$(BINARY): $(GOCC) $(SRC) Makefile Makefile.COMMON
 	$(GO) build $(GOFLAGS) -o $@
 
 .PHONY: archive
@@ -106,7 +102,7 @@ tag:
 	git push --tags
 
 .PHONY: test
-test: $(GOCC) dependencies-stamp
+test: $(GOCC)
 	$(GO) test ./...
 
 .PHONY: format
@@ -115,4 +111,4 @@ format: $(GOCC)
 
 .PHONY: clean
 clean:
-	rm -rf $(BINARY) $(ARCHIVE) .build *-stamp
+	rm -rf $(BINARY) $(ARCHIVE) .build
