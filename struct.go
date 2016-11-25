@@ -261,7 +261,7 @@ type NodeStatsFSDataResponse struct {
 }
 
 type ClusterHealthResponse struct {
-	ClusterName             string `json:cluster_name`
+	ClusterName             string `json:"cluster_name"`
 	Status                  string `json:"status"`
 	TimedOut                bool   `json:"timed_out"`
 	NumberOfNodes           int64  `json:"number_of_nodes"`

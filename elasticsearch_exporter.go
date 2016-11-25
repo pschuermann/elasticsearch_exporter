@@ -27,6 +27,9 @@ type VecInfo struct {
 var (
 	gaugeMetrics = map[string]string{
 		"cluster_health_status":                   "Current cluster health status",
+		"cluster_health_timed_out":                "Current cluster health timed out",
+		"cluster_number_of_nodes_total":           "Current cluster total node size",
+		"cluster_number_of_data_nodes_total":      "Current cluster total data node size",
 		"indices_fielddata_memory_size_bytes":     "Field data cache memory usage in bytes",
 		"indices_filter_cache_memory_size_bytes":  "Filter cache memory usage in bytes",
 		"indices_query_cache_memory_size_bytes":   "Query cache memory usage in bytes",
@@ -415,6 +418,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	default:
 		e.gauges["cluster_health_status"].WithLabelValues(clusterStat.ClusterName, "unknown").Set(float64(0))
 	}
+	if clusterStat.TimedOut {
+		e.gauges["cluster_health_timed_out"].WithLabelValues(clusterStat.ClusterName, "unknown").Set(float64(1))
+	} else {
+		e.gauges["cluster_health_timed_out"].WithLabelValues(clusterStat.ClusterName, "unknown").Set(float64(0))
+	}
+	e.gauges["cluster_number_of_nodes_total"].WithLabelValues(clusterStat.ClusterName, "unknown").Set(float64(clusterStat.NumberOfNodes))
+	e.gauges["cluster_number_of_data_nodes_total"].WithLabelValues(clusterStat.ClusterName, "unknown").Set(float64(clusterStat.NumberOfDataNodes))
 
 	// Report metrics.
 
