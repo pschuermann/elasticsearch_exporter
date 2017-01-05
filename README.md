@@ -21,6 +21,7 @@ make
 * __`es.all`:__ If true, query stats for all nodes in the cluster,
     rather than just the node we connect to.
 * __`es.timeout`:__ Timeout for trying to get stats from Elasticsearch. (ex: 20s)
+* __`es.unsecure`:__ If true, certificate validation is skipped.
 * __`web.listen-address`:__ Address to listen on for web interface and telemetry.
 * __`web.telemetry-path`:__ Path under which to expose metrics.
 
