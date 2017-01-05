@@ -8,6 +8,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"sync"
+	"crypto/tls"
 	"time"
 
 	"encoding/json"
@@ -150,7 +151,7 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(uri string, timeout time.Duration, allNodes bool) *Exporter {
+func NewExporter(uri string, timeout time.Duration, allNodes bool, unsecure bool) *Exporter {
 	counters := make(map[string]*prometheus.CounterVec, len(counterMetrics))
 	counterVecs := make(map[string]*prometheus.CounterVec, len(counterVecMetrics))
 	gauges := make(map[string]*prometheus.GaugeVec, len(gaugeMetrics))
@@ -225,6 +226,7 @@ func NewExporter(uri string, timeout time.Duration, allNodes bool) *Exporter {
 					}
 					return c, nil
 				},
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: unsecure},
 			},
 		},
 	}
@@ -452,6 +454,7 @@ func main() {
 		esURI         = flag.String("es.uri", "http://localhost:9200", "HTTP API address of an Elasticsearch node.")
 		esTimeout     = flag.Duration("es.timeout", 5*time.Second, "Timeout for trying to get stats from Elasticsearch.")
 		esAllNodes    = flag.Bool("es.all", false, "Export stats for all nodes in the cluster.")
+		unsecure      = flag.Bool("es.unsecure", false, "Ignore certificate validation errors.")
 	)
 	flag.Parse()
 
@@ -461,7 +464,7 @@ func main() {
 	// 	*esURI = *esURI + "/_nodes/_local/stats"
 	// }
 
-	exporter := NewExporter(*esURI, *esTimeout, *esAllNodes)
+	exporter := NewExporter(*esURI, *esTimeout, *esAllNodes, *unsecure)
 	prometheus.MustRegister(exporter)
 
 	log.Println("Starting Server:", *listenAddress)
